@@ -272,7 +272,6 @@ protected:
 					oss >> u;
 					oss >> v;
 					uv_buff.emplace_back(Scalar(u), Scalar(v));
-//                    std::cout << "loc " << u << " " << v << std::endl;
 				}
 
 				fp >> tag;
@@ -390,7 +389,6 @@ protected:
                         {
                             uint32 index;
                             std::stringstream iss(str.substr(temp_idx+1,ind));
-//                            std::cout << "idx " << temp_idx << " " << ind << " " << index << std::endl;
                             iss >> index;
                             tableUV.push_back(index);
                         }
@@ -429,21 +427,8 @@ protected:
                     {
                         auto k = vertices_id[index];
                         (*uv_coord)[k] = uv_buff[tableUV[j] - 1];
-//                        std::cout << "vert " << k << " " << tableUV[j] << " " << uv_buff[tableUV[j]-1](0) << " " << uv_buff[tableUV[j]-1](1) << std::endl;
                     }
 				}
-//                if (has_uv)
-//                {
-//                    for (uint32 i = 0; i < max_id+1; ++i)
-//                    {
-//                        std::cout << "Temp_Coords " << i << ": ";
-//                        for (uint32 j = 0; j < 2; ++j)
-//                        {
-//                            std::cout << (*uv_coord)[i](j) << " ";
-//                        }
-//                        std::cout << std::endl;
-//                    }
-//                }
 			}
 			fp >> tag;
 			getline_safe(fp, line);
@@ -455,18 +440,6 @@ protected:
 			for(auto j: vertices_id)
 				(*normal)[j].normalize();
 		}
-//        if (has_uv)
-//        {
-//            for (uint32 i = 0; i < max_id+1; ++i)
-//            {
-//                std::cout << "Vertex " << i << ": ";
-//                for (uint32 j = 0; j < 2; ++j)
-//                {
-//                    std::cout << (*uv_coord)[i](j) << " ";
-//                }
-//                std::cout << std::endl;
-//            }
-//        }
 		return true;
 	}
 };
