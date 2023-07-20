@@ -196,6 +196,7 @@ public:
 	using Self = ObjSurfaceImport<MAP, VEC3>;
 	using Inherit = SurfaceFileImport<MAP>;
 	using Scalar = typename geometry::vector_traits<VEC3>::Scalar;
+    using VEC2 = Eigen::Matrix<Scalar,2,1>;
 	template <typename T>
 	using ChunkArray = typename Inherit::template ChunkArray<T>;
 
@@ -212,9 +213,12 @@ protected:
 		ChunkArray<VEC3>* position = this->template add_vertex_attribute<VEC3>("position");
 		ChunkArray<VEC3>* normal = nullptr;
 		std::vector<VEC3> norm_buff;
+		ChunkArray<VEC2>* uv_coord = nullptr;
+		std::vector<VEC2> uv_buff;
 
 		std::string line, tag;
 		bool has_normals = false;
+        bool has_uv = false;
 
 		do
 		{
@@ -238,6 +242,37 @@ protected:
 					oss >> z;
 					float64 n = std::sqrt(x*x+y*y+z*z);
 					norm_buff.emplace_back(Scalar(x/n), Scalar(y/n), Scalar(z/n));
+				}
+
+				fp >> tag;
+				getline_safe(fp, line);
+			} while (!fp.eof());
+		}
+
+		fp.clear();
+		fp.seekg(0, std::ios::beg);
+
+		do
+		{
+			fp >> tag;
+			getline_safe(fp, line);
+		} while (tag != std::string("vt") && (!fp.eof()));
+
+		if (tag == "vt")
+		{
+			has_uv = true;
+			uv_buff.reserve(1024);
+			do
+			{
+				if (tag == std::string("vt"))
+				{
+					std::stringstream oss(line);
+
+					float64 u, v;
+					oss >> u;
+					oss >> v;
+					uv_buff.emplace_back(Scalar(u), Scalar(v));
+//                    std::cout << "loc " << u << " " << v << std::endl;
 				}
 
 				fp >> tag;
@@ -293,6 +328,12 @@ protected:
 			normal->set_all_values(VEC3(0,0,0));
 		}
 
+        if (has_uv)
+        {
+            uv_coord = this->template add_vertex_attribute<VEC2>("uv");
+            uv_coord->set_all_values(VEC2(0,0));
+        }
+
 		fp.clear();
 		fp.seekg(0, std::ios::beg);
 
@@ -308,7 +349,9 @@ protected:
 		std::vector<uint32> table;
 		table.reserve(64);
 		std::vector<uint32> tableN;
-		table.reserve(64);
+		tableN.reserve(64);
+		std::vector<uint32> tableUV;
+		tableUV.reserve(64);
 		do
 		{
 			if (tag == std::string("f")) // lecture d'une face
@@ -316,6 +359,7 @@ protected:
 				std::stringstream oss(line);
 
 				table.clear();
+                tableUV.clear();
 				tableN.clear();
 				while (!oss.eof())  // lecture de tous les indices
 				{
@@ -334,6 +378,23 @@ protected:
 						iss >> index;
 						table.push_back(index);
 					}
+                    if (has_uv)
+                    {
+                        // extract /*/ (v/vt/vn)
+                        uint32 temp_idx = ind;
+                        ++ind;
+                        while ((ind < str.length()) && (str[ind] != '/'))
+                            ++ind;
+
+                        if (ind < str.length())
+                        {
+                            uint32 index;
+                            std::stringstream iss(str.substr(temp_idx+1,ind));
+//                            std::cout << "idx " << temp_idx << " " << ind << " " << index << std::endl;
+                            iss >> index;
+                            tableUV.push_back(index);
+                        }
+                    }
 					if (has_normals)
 					{
 						// jump over /?/ (v/vt/vn)
@@ -364,7 +425,25 @@ protected:
 						auto k = vertices_id[index];
 						(*normal)[k] += norm_buff[tableN[j] - 1];
 					}
+                    if (has_uv)
+                    {
+                        auto k = vertices_id[index];
+                        (*uv_coord)[k] = uv_buff[tableUV[j] - 1];
+//                        std::cout << "vert " << k << " " << tableUV[j] << " " << uv_buff[tableUV[j]-1](0) << " " << uv_buff[tableUV[j]-1](1) << std::endl;
+                    }
 				}
+//                if (has_uv)
+//                {
+//                    for (uint32 i = 0; i < max_id+1; ++i)
+//                    {
+//                        std::cout << "Temp_Coords " << i << ": ";
+//                        for (uint32 j = 0; j < 2; ++j)
+//                        {
+//                            std::cout << (*uv_coord)[i](j) << " ";
+//                        }
+//                        std::cout << std::endl;
+//                    }
+//                }
 			}
 			fp >> tag;
 			getline_safe(fp, line);
@@ -376,6 +455,18 @@ protected:
 			for(auto j: vertices_id)
 				(*normal)[j].normalize();
 		}
+//        if (has_uv)
+//        {
+//            for (uint32 i = 0; i < max_id+1; ++i)
+//            {
+//                std::cout << "Vertex " << i << ": ";
+//                for (uint32 j = 0; j < 2; ++j)
+//                {
+//                    std::cout << (*uv_coord)[i](j) << " ";
+//                }
+//                std::cout << std::endl;
+//            }
+//        }
 		return true;
 	}
 };
